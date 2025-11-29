@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tiny Invoicing</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: #f4f5fb;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .06);
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            margin-top: 4px;
+        }
+
+        textarea {
+            min-height: 70px;
+            resize: vertical;
+        }
+
+        button {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: #fff;
+        }
+
+        .btn-primary:disabled {
+            opacity: .6;
+            cursor: default;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f0f2ff;
+        }
+
+        .status {
+            text-transform: capitalize;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Tiny Invoicing</h1>
+
+        <div class="card">
+            <h2>Create Invoice</h2>
+            <form id="invoice-form">
+                <label>
+                    Customer ID
+                    <input type="number" id="customerId" required />
+                </label>
+
+                <label>
+                    Issue Date
+                    <input type="date" id="issueDate" required />
+                </label>
+
+                <label>
+                    Due Date
+                    <input type="date" id="dueDate" required />
+                </label>
+
+                <label>
+                    Status
+                    <select id="status">
+                        <option value="draft">Draft</option>
+                        <option value="sent">Sent</option>
+                        <option value="paid">Paid</option>
+                    </select>
+                </label>
+
+                <label>
+                    Notes
+                    <textarea id="notes" placeholder="Optional notes..."></textarea>
+                </label>
+
+                <h3>Single Line Item</h3>
+
+                <label>
+                    Description
+                    <input type="text" id="itemDesc" required />
+                </label>
+
+                <label>
+                    Quantity
+                    <input type="number" id="itemQty" step="0.01" value="1" required />
+                </label>
+
+                <label>
+                    Unit Price
+                    <input type="number" id="itemPrice" step="0.01" value="0" required />
+                </label>
+
+                <div style="margin-top:12px;">
+                    <button type="submit" class="btn-primary" id="submitBtn">Create Invoice</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Invoices</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Customer</th>
+                        <th>Issue</th>
+                        <th>Due</th>
+                        <th>Status</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody id="invoiceTableBody">
+                    <tr>
+                        <td colspan="6">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const tbody = document.getElementById('invoiceTableBody');
+        const form = document.getElementById('invoice-form');
+        const submitBtn = document.getElementById('submitBtn');
+
+        async function loadInvoices() {
+            tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+            try {
+                const res = await fetch('api/invoices');
+                if (!res.ok) throw new Error('Failed to load invoices');
+                const data = await res.json();
+                renderInvoices(data);
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="6">Error loading invoices</td></tr>';
+            }
+        }
+
+        function renderInvoices(invoices) {
+            if (!Array.isArray(invoices) || invoices.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">No invoices yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            invoices.forEach(inv => {
+                // if backend doesn’t send total, we can’t calculate without items
+                const total = inv.total || '';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+          <td>${inv.id}</td>
+          <td>${inv.customer_id}</td>
+          <td>${inv.issue_date}</td>
+          <td>${inv.due_date}</td>
+          <td class="status">${inv.status}</td>
+          <td>${total}</td>
+        `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            submitBtn.disabled = true;
+
+            const payload = {
+                customer_id: parseInt(document.getElementById('customerId').value, 10),
+                issue_date: document.getElementById('issueDate').value,
+                due_date: document.getElementById('dueDate').value,
+                status: document.getElementById('status').value,
+                notes: document.getElementById('notes').value,
+                items: [
+                    {
+                        description: document.getElementById('itemDesc').value,
+                        quantity: parseFloat(document.getElementById('itemQty').value),
+                        unit_price: parseFloat(document.getElementById('itemPrice').value),
+                    },
+                ],
+            };
+
+            try {
+                const res = await fetch('api/invoices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    alert(text || 'Failed to create invoice');
+                } else {
+                    await loadInvoices();
+                    form.reset();
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Network error while creating invoice');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        loadInvoices();
+    </script>
+</body>
+
+</html>
