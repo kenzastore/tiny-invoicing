@@ -29,7 +29,7 @@ Implement the logic and API endpoint for creating new invoices, including input 
 ### Tasks
 - [x] Task: Implement input validation for `CreateInvoice` handler. [a2f1cc9]
 - [x] Task: Implement line item processing in `CreateInvoice` handler (calculate total for each line item and invoice total). [454236c]
-- [ ] Task: Write tests for `CreateInvoice` handler.
+- [x] Task: Write tests for `CreateInvoice` handler. [c0f9c12]
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Invoice Creation' (Protocol in workflow.md)
 
 ## Phase 3: View and List Invoices
