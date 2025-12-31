@@ -20,6 +20,10 @@ func main() {
 	// Set up router
 	mux := http.NewServeMux()
 
+	invoiceHandler := &handlers.InvoiceHandler{
+		Store: &database.Store{},
+	}
+
 	// Public route to create an admin user (for demo purposes)
 	mux.HandleFunc("/api/admin/create-user", handlers.CreateAdminUser)
 
@@ -27,9 +31,9 @@ func main() {
 	mux.HandleFunc("/api/invoices", auth.BasicAuth(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			handlers.GetInvoices(w, r)
+			invoiceHandler.GetInvoices(w, r)
 		case http.MethodPost:
-			handlers.CreateInvoice(w, r)
+			invoiceHandler.CreateInvoice(w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -37,9 +41,9 @@ func main() {
 	mux.HandleFunc("/api/invoices/", auth.BasicAuth(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			handlers.GetInvoice(w, r)
+			invoiceHandler.GetInvoice(w, r)
 		case http.MethodPut:
-			handlers.UpdateInvoice(w, r)
+			invoiceHandler.UpdateInvoice(w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
