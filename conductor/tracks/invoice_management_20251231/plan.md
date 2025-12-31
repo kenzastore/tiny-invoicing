@@ -11,6 +11,11 @@ Define the data model for invoices and implement the core API endpoints for crea
 
 ### Tasks
 
+- [x] Task: Define Invoice and LineItem structs in a new `models/invoice.go` file. [5b9179e]
+- [ ] Task: Create a new `migrations/0001_create_invoices_table.up.sql` file with the necessary SQL statements.
+- [ ] Task: Implement a stub for the `CreateInvoice` handler.
+- [ ] Task: Implement a stub for the `GetInvoice` handler.
+- [ ] Task: Implement a stub for the `ListInvoices` handler.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Invoice Data Model and API Endpoints' (Protocol in workflow.md)
 
 ## Phase 2: Invoice Creation
