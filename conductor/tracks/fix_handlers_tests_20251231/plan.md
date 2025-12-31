@@ -23,7 +23,7 @@ Update the `CreateInvoice` handler to use the `InvoiceStore` interface instead o
 - [ ] Task: (Optional) Perform a quick manual smoke test if the environment is ready.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Handler Refactoring for Dependency Injection' (Protocol in workflow.md)
 
-## Phase 3: Test Suite Refactoring
+## Phase 3: Test Suite Refactoring [checkpoint: 9d69325]
 
 ### Objective
 Replace brittle tests that use global state manipulation with clean unit tests using the `InvoiceStore` mock, focusing on critical path coverage.
@@ -34,4 +34,4 @@ Replace brittle tests that use global state manipulation with clean unit tests u
 - [x] Task: **Green Phase:** Update the test setup to properly inject the mock and make the test pass. [21e837a]
 - [x] Task: Refactor other `CreateInvoice` tests (invalid input, database errors) to use the mock and remove all `sqlmock` dependencies. [21e837a]
 - [x] Task: Verify that `go test ./handlers/...` passes and critical paths (success, invalid input, store error) are covered. [21e837a]
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Test Suite Refactoring' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Test Suite Refactoring' (Protocol in workflow.md)
