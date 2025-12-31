@@ -20,4 +20,15 @@ type LineItem struct {
 	Description string  `json:"description"`
 	Quantity    int     `json:"quantity"`
 	UnitPrice   float64 `json:"unit_price"`
+	Total       float64 `json:"total"`
+}
+
+// CalculateTotal calculates the total amount of the invoice based on its line items.
+func (i *Invoice) CalculateTotal() {
+	var grandTotal float64
+	for j := range i.LineItems {
+		i.LineItems[j].Total = float64(i.LineItems[j].Quantity) * i.LineItems[j].UnitPrice
+		grandTotal += i.LineItems[j].Total
+	}
+	i.Total = grandTotal
 }

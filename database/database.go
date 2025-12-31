@@ -121,6 +121,8 @@ func GetInvoiceByID(id int) (*models.Invoice, error) {
 	}
 	invoice.LineItems = items
 
+	invoice.CalculateTotal()
+
 	return &invoice, nil
 }
 

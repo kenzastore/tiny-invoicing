@@ -26,6 +26,8 @@ func CreateInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	invoice.CalculateTotal()
+
 	invoiceID, err := database.CreateInvoice(&invoice)
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "Failed to create invoice")
