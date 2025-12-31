@@ -4,7 +4,7 @@
 
 ---
 
-## Phase 1: Invoice Data Model and API Endpoints
+## Phase 1: Invoice Data Model and API Endpoints [checkpoint: 2205983]
 
 ### Objective
 Define the data model for invoices and implement the core API endpoints for creation and retrieval.
