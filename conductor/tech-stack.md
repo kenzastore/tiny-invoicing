@@ -11,3 +11,4 @@ This document outlines the core technologies utilized in the Tiny Invoicing appl
 
 ## Testing Libraries
 - **go-sqlmock**: Used for mocking SQL database interactions in unit tests.
+- **Interface Dependency Injection**: Used to decouple handlers from the database for cleaner unit testing with custom mocks.
