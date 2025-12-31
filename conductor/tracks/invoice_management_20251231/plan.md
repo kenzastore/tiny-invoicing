@@ -17,7 +17,7 @@ Define the data model for invoices and implement the core API endpoints for crea
 - [c] Task: Implement a stub for the `GetInvoice` handler.
 - [c] Task: Implement a stub for the `ListInvoices` handler.
 - [x] Task: Refactor `database/database.go` to use `models.Invoice` and `models.LineItem` structs. [99d4745]
-- [ ] Task: Refactor `handlers/handlers.go` to use `models.Invoice` and `models.LineItem` structs.
+- [x] Task: Refactor `handlers/handlers.go` to use `models.Invoice` and `models.LineItem` structs. [b4ca47c]
 - [ ] Task: Adjust `migrations/0001_create_invoices_table.up.sql` to match `models.Invoice` and `models.LineItem` struct fields (especially 'status' vs 'paid').
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Invoice Data Model and API Endpoints' (Protocol in workflow.md)
 
