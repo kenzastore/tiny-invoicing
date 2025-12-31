@@ -5,21 +5,23 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+
 	"tiny-invoicing/auth"
 	"tiny-invoicing/database"
+	"tiny-invoicing/models" // Add models import
 	"tiny-invoicing/response"
 )
 
 // CreateInvoice creates a new invoice.
 func CreateInvoice(w http.ResponseWriter, r *http.Request) {
-	var invoice database.Invoice
+	var invoice models.Invoice
 	if err := json.NewDecoder(r.Body).Decode(&invoice); err != nil {
 		response.Error(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	// Basic validation
-	if invoice.CustomerID == 0 || invoice.IssueDate == "" || invoice.DueDate == "" || len(invoice.Items) == 0 {
+	// Basic validation for models.Invoice
+	if invoice.ClientID == 0 || invoice.IssueDate.IsZero() || invoice.DueDate.IsZero() || len(invoice.LineItems) == 0 {
 		response.Error(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -54,6 +56,7 @@ func GetInvoices(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, invoices)
 }
 
+
 // GetInvoice retrieves a single invoice.
 func GetInvoice(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Path[len("/api/invoices/"):])
@@ -72,7 +75,7 @@ func GetInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.JSON(w, http.StatusOK, invoice)
+	response.JSON(w, http.StatusOK, *invoice)
 }
 
 // UpdateInvoice updates an invoice.
@@ -84,14 +87,14 @@ func UpdateInvoice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var payload struct {
-		Paid bool `json:"paid"`
+		Status string `json:"status"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		response.Error(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	if err := database.UpdateInvoiceStatus(id, payload.Paid); err != nil {
+	if err := database.UpdateInvoiceStatusString(id, payload.Status); err != nil {
 		response.Error(w, http.StatusInternalServerError, "Failed to update invoice")
 		return
 	}
