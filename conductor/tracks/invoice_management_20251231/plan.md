@@ -27,6 +27,9 @@ Define the data model for invoices and implement the core API endpoints for crea
 Implement the logic and API endpoint for creating new invoices, including input validation and line item management.
 
 ### Tasks
+- [x] Task: Implement input validation for `CreateInvoice` handler. [a2f1cc9]
+- [ ] Task: Implement line item processing in `CreateInvoice` handler (calculate total for each line item and invoice total).
+- [ ] Task: Write tests for `CreateInvoice` handler.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Invoice Creation' (Protocol in workflow.md)
 
 ## Phase 3: View and List Invoices
