@@ -29,9 +29,9 @@ Update the `CreateInvoice` handler to use the `InvoiceStore` interface instead o
 Replace brittle tests that use global state manipulation with clean unit tests using the `InvoiceStore` mock, focusing on critical path coverage.
 
 ### Tasks
-- [ ] Task: Create a `MockInvoiceStore` in `handlers/handlers_test.go`.
-- [ ] Task: **Red Phase:** Update `TestCreateInvoice_Success` to use the mock and verify that it fails as expected.
-- [ ] Task: **Green Phase:** Update the test setup to properly inject the mock and make the test pass.
-- [ ] Task: Refactor other `CreateInvoice` tests (invalid input, database errors) to use the mock and remove all `sqlmock` dependencies.
-- [ ] Task: Verify that `go test ./handlers/...` passes and critical paths (success, invalid input, store error) are covered.
+- [x] Task: Create a `MockInvoiceStore` in `handlers/handlers_test.go`. [21e837a]
+- [x] Task: **Red Phase:** Update `TestCreateInvoice_Success` to use the mock and verify that it fails as expected. [21e837a]
+- [x] Task: **Green Phase:** Update the test setup to properly inject the mock and make the test pass. [21e837a]
+- [x] Task: Refactor other `CreateInvoice` tests (invalid input, database errors) to use the mock and remove all `sqlmock` dependencies. [21e837a]
+- [x] Task: Verify that `go test ./handlers/...` passes and critical paths (success, invalid input, store error) are covered. [21e837a]
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Test Suite Refactoring' (Protocol in workflow.md)
