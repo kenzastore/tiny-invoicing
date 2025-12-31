@@ -21,7 +21,7 @@ Define the data model for invoices and implement the core API endpoints for crea
 - [x] Task: Adjust `migrations/0001_create_invoices_table.up.sql` to match `models.Invoice` and `models.LineItem` struct fields (especially 'status' vs 'paid'). [e3dddc2]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Invoice Data Model and API Endpoints' (Protocol in workflow.md)
 
-## Phase 2: Invoice Creation
+## Phase 2: Invoice Creation [checkpoint: f3c25d9]
 
 ### Objective
 Implement the logic and API endpoint for creating new invoices, including input validation and line item management.
@@ -30,7 +30,7 @@ Implement the logic and API endpoint for creating new invoices, including input 
 - [x] Task: Implement input validation for `CreateInvoice` handler. [a2f1cc9]
 - [x] Task: Implement line item processing in `CreateInvoice` handler (calculate total for each line item and invoice total). [454236c]
 - [x] Task: Write tests for `CreateInvoice` handler. [c0f9c12]
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Invoice Creation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Invoice Creation' (Protocol in workflow.md)
 
 ## Phase 3: View and List Invoices
 
