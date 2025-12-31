@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"tiny-invoicing/models" // Add models import
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -17,27 +18,6 @@ type Customer struct {
 	Name    string `json:"name"`
 	Email   string `json:"email"`
 	Address string `json:"address"`
-}
-
-// Invoice represents an invoice.
-type Invoice struct {
-	ID         int           `json:"id"`
-	CustomerID int           `json:"customer_id"`
-	IssueDate  string        `json:"issue_date"`
-	DueDate    string        `json:"due_date"`
-	Paid       bool          `json:"paid"`
-	Total      float64       `json:"total"`
-	Items      []InvoiceItem `json:"items,omitempty"`
-}
-
-// InvoiceItem represents an item on an invoice.
-type InvoiceItem struct {
-	ID          int     `json:"id"`
-	InvoiceID   int     `json:"invoice_id"`
-	Description string  `json:"description"`
-	Quantity    int     `json:"quantity"`
-	UnitPrice   float64 `json:"unit_price"`
-	Total       float64 `json:"total"`
 }
 
 // User represents a user.
@@ -65,14 +45,15 @@ func InitDB() error {
 }
 
 // CreateInvoice creates a new invoice and its items in a transaction.
-func CreateInvoice(invoice *Invoice) (int64, error) {
+func CreateInvoice(invoice *models.Invoice) (int64, error) {
 	tx, err := DB.Begin()
 	if err != nil {
 		return 0, err
 	}
 
-	result, err := tx.Exec("INSERT INTO invoices (customer_id, issue_date, due_date, paid, total) VALUES (?, ?, ?, ?, ?)",
-		invoice.CustomerID, invoice.IssueDate, invoice.DueDate, invoice.Paid, invoice.Total)
+	// Use Status from models.Invoice
+	result, err := tx.Exec("INSERT INTO invoices (client_id, issue_date, due_date, status, total) VALUES (?, ?, ?, ?, ?)",
+		invoice.ClientID, invoice.IssueDate, invoice.DueDate, invoice.Status, invoice.Total)
 	if err != nil {
 		tx.Rollback()
 		return 0, err
@@ -84,9 +65,9 @@ func CreateInvoice(invoice *Invoice) (int64, error) {
 		return 0, err
 	}
 
-	for _, item := range invoice.Items {
-		_, err := tx.Exec("INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, total) VALUES (?, ?, ?, ?, ?)",
-			invoiceID, item.Description, item.Quantity, item.UnitPrice, item.Total)
+	for _, item := range invoice.LineItems {
+		_, err := tx.Exec("INSERT INTO line_items (invoice_id, description, quantity, unit_price) VALUES (?, ?, ?, ?)",
+			invoiceID, item.Description, item.Quantity, item.UnitPrice)
 		if err != nil {
 			tx.Rollback()
 			return 0, err
@@ -97,17 +78,17 @@ func CreateInvoice(invoice *Invoice) (int64, error) {
 }
 
 // GetInvoices retrieves a paginated list of invoices.
-func GetInvoices(limit, offset int) ([]Invoice, error) {
-	rows, err := DB.Query("SELECT id, customer_id, issue_date, due_date, paid, total FROM invoices ORDER BY issue_date DESC LIMIT ? OFFSET ?", limit, offset)
+func GetInvoices(limit, offset int) ([]models.Invoice, error) {
+	rows, err := DB.Query("SELECT id, client_id, issue_date, due_date, status, total FROM invoices ORDER BY issue_date DESC LIMIT ? OFFSET ?", limit, offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var invoices []Invoice
+	var invoices []models.Invoice
 	for rows.Next() {
-		var invoice Invoice
-		if err := rows.Scan(&invoice.ID, &invoice.CustomerID, &invoice.IssueDate, &invoice.DueDate, &invoice.Paid, &invoice.Total); err != nil {
+		var invoice models.Invoice
+		if err := rows.Scan(&invoice.ID, &invoice.ClientID, &invoice.IssueDate, &invoice.DueDate, &invoice.Status, &invoice.Total); err != nil {
 			return nil, err
 		}
 		invoices = append(invoices, invoice)
@@ -116,36 +97,36 @@ func GetInvoices(limit, offset int) ([]Invoice, error) {
 }
 
 // GetInvoiceByID retrieves a single invoice by its ID, including its items.
-func GetInvoiceByID(id int) (*Invoice, error) {
-	var invoice Invoice
-	err := DB.QueryRow("SELECT id, customer_id, issue_date, due_date, paid, total FROM invoices WHERE id = ?", id).Scan(
-		&invoice.ID, &invoice.CustomerID, &invoice.IssueDate, &invoice.DueDate, &invoice.Paid, &invoice.Total)
+func GetInvoiceByID(id int) (*models.Invoice, error) {
+	var invoice models.Invoice
+	err := DB.QueryRow("SELECT id, client_id, issue_date, due_date, status, total FROM invoices WHERE id = ?", id).Scan(
+		&invoice.ID, &invoice.ClientID, &invoice.IssueDate, &invoice.DueDate, &invoice.Status, &invoice.Total)
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := DB.Query("SELECT id, invoice_id, description, quantity, unit_price, total FROM invoice_items WHERE invoice_id = ?", id)
+	rows, err := DB.Query("SELECT id, invoice_id, description, quantity, unit_price FROM line_items WHERE invoice_id = ?", id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var items []InvoiceItem
+	var items []models.LineItem
 	for rows.Next() {
-		var item InvoiceItem
-		if err := rows.Scan(&item.ID, &item.InvoiceID, &item.Description, &item.Quantity, &item.UnitPrice, &item.Total); err != nil {
+		var item models.LineItem
+		if err := rows.Scan(&item.ID, &item.InvoiceID, &item.Description, &item.Quantity, &item.UnitPrice); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
 	}
-	invoice.Items = items
+	invoice.LineItems = items
 
 	return &invoice, nil
 }
 
-// UpdateInvoiceStatus updates the paid status of an invoice.
-func UpdateInvoiceStatus(id int, paid bool) error {
-	_, err := DB.Exec("UPDATE invoices SET paid = ? WHERE id = ?", paid, id)
+// UpdateInvoiceStatusString updates the status of an invoice.
+func UpdateInvoiceStatusString(id int, status string) error {
+	_, err := DB.Exec("UPDATE invoices SET status = ? WHERE id = ?", status, id)
 	return err
 }
 
