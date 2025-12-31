@@ -11,7 +11,7 @@ Establish the contract for dependency injection and provide a concrete implement
 - [x] Task: Verify that the project compiles with `go build ./...`. [5eab6bb]
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Interface and Adapter Implementation' (Protocol in workflow.md)
 
-## Phase 2: Handler Refactoring for Dependency Injection
+## Phase 2: Handler Refactoring for Dependency Injection [checkpoint: a2a8c51]
 
 ### Objective
 Update the `CreateInvoice` handler to use the `InvoiceStore` interface instead of direct global database access.
@@ -21,7 +21,7 @@ Update the `CreateInvoice` handler to use the `InvoiceStore` interface instead o
 - [x] Task: Update `main.go` to instantiate the `database.Store` and inject it into the `InvoiceHandler`. [1e15ec9]
 - [x] Task: Verify wiring and compilation with `go build ./...`. [1e15ec9]
 - [ ] Task: (Optional) Perform a quick manual smoke test if the environment is ready.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Handler Refactoring for Dependency Injection' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Handler Refactoring for Dependency Injection' (Protocol in workflow.md)
 
 ## Phase 3: Test Suite Refactoring
 
