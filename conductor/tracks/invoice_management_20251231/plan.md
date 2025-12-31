@@ -32,7 +32,7 @@ Implement the logic and API endpoint for creating new invoices, including input 
 - [x] Task: Write tests for `CreateInvoice` handler. [c0f9c12]
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Invoice Creation' (Protocol in workflow.md)
 
-## Phase 3: View and List Invoices
+## Phase 3: View and List Invoices [checkpoint: 7c03696]
 
 ### Objective
 Implement the logic and API endpoints for viewing a single invoice and listing all invoices, including basic sorting and pagination.
@@ -42,4 +42,4 @@ Implement the logic and API endpoints for viewing a single invoice and listing a
 - [x] Task: Implement full logic for `ListInvoices` handler (pagination and sorting). [9954cea]
 - [x] Task: Write tests for `GetInvoice` handler. [c4f5dbe]
 - [x] Task: Write tests for `ListInvoices` handler. [9954cea]
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: View and List Invoices' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: View and List Invoices' (Protocol in workflow.md)
