@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -104,5 +105,77 @@ func TestCreateInvoice_Success(t *testing.T) {
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestCreateInvoice_DatabaseError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	oldDB := database.DB
+	database.DB = db
+	defer func() { database.DB = oldDB }()
+
+	reqBody := []byte(`{
+		"client_id": 1,
+		"issue_date": "2025-12-31T00:00:00Z",
+		"due_date": "2026-01-14T00:00:00Z",
+		"status": "draft",
+		"line_items": [{"description": "Item 1", "quantity": 1, "unit_price": 10.0}]
+	}`)
+	req, err := http.NewRequest("POST", "/invoices", bytes.NewBuffer(reqBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO invoices").
+		WithArgs(1, sqlmock.AnyArg(), sqlmock.AnyArg(), "draft", 10.0).
+		WillReturnError(fmt.Errorf("db error"))
+	mock.ExpectRollback()
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(CreateInvoice)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusInternalServerError)
+	}
+
+	expected := "{\"error\":\"Failed to create invoice\"}\n"
+	if rr.Body.String() != expected {
+		t.Errorf("handler returned unexpected body: got %v want %v",
+			rr.Body.String(), expected)
+	}
+}
+
+func TestCreateInvoice_InvalidJSON(t *testing.T) {
+	reqBody := []byte(`{invalid json}`)
+	req, err := http.NewRequest("POST", "/invoices", bytes.NewBuffer(reqBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(CreateInvoice)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+
+	expected := "{\"error\":\"Invalid request payload\"}\n"
+	if rr.Body.String() != expected {
+		t.Errorf("handler returned unexpected body: got %v want %v",
+			rr.Body.String(), expected)
 	}
 }
