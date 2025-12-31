@@ -17,6 +17,11 @@ func main() {
 	}
 	defer database.DB.Close()
 
+	// Ensure a default customer exists for the demo
+	if err := database.EnsureDefaultCustomer(); err != nil {
+		log.Printf("Warning: Failed to ensure default customer: %v", err)
+	}
+
 	// Set up router
 	mux := http.NewServeMux()
 

@@ -3,6 +3,8 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -31,7 +33,7 @@ func (h *InvoiceHandler) CreateInvoice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Basic validation for models.Invoice
-	if invoice.ClientID == 0 || invoice.IssueDate.IsZero() || invoice.DueDate.IsZero() || len(invoice.LineItems) == 0 {
+	if invoice.CustomerID == 0 || invoice.IssueDate.IsZero() || invoice.DueDate.IsZero() || len(invoice.LineItems) == 0 {
 		response.Error(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -40,7 +42,9 @@ func (h *InvoiceHandler) CreateInvoice(w http.ResponseWriter, r *http.Request) {
 
 	invoiceID, err := h.Store.CreateInvoice(&invoice)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to create invoice")
+		log.Printf("Error creating invoice in DB: %v", err)
+		// DEBUG MODE: Mengirim error asli ke frontend
+		response.Error(w, http.StatusInternalServerError, fmt.Sprintf("DB Error: %v", err))
 		return
 	}
 

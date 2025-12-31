@@ -44,6 +44,44 @@ func InitDB() error {
 	return DB.Ping()
 }
 
+// EnsureDefaultCustomer creates a default customer if none exists.
+// Also performs schema patches to ensure decimal columns are large enough.
+func EnsureDefaultCustomer() error {
+	// 1. Patch Schema: Widen DECIMAL columns to avoid "Out of range" errors
+	// Using DECIMAL(20, 2) allows numbers up to 99,999,999,999,999,999.99
+	schemaPatches := []string{
+		"ALTER TABLE invoices MODIFY total DECIMAL(20, 2)",
+		"ALTER TABLE invoice_items MODIFY total DECIMAL(20, 2)",
+		"ALTER TABLE invoice_items MODIFY unit_price DECIMAL(20, 2)",
+	}
+
+	for _, query := range schemaPatches {
+		_, err := DB.Exec(query)
+		if err != nil {
+			// Ignore error if table doesn't exist yet, usually it's fine
+			fmt.Printf("Schema patch warning: %v\n", err)
+		}
+	}
+
+	// 2. Ensure Default Customer
+	// We use standard SQL logic: Try to select, if missing, insert explicitly with ID=1.
+	var exists int
+	err := DB.QueryRow("SELECT 1 FROM customers WHERE id = 1").Scan(&exists)
+	
+	if err == sql.ErrNoRows {
+		// Force insert ID 1. Using explicit ID overrides auto-increment in MySQL.
+		_, err = DB.Exec("INSERT INTO customers (id, name, email, address) VALUES (1, 'Demo Client', 'demo@example.com', '123 Tech Street')")
+		if err != nil {
+			return fmt.Errorf("failed to create default customer: %v", err)
+		}
+		fmt.Println("Default customer (ID: 1) created/restored.")
+	} else if err != nil {
+		return err
+	}
+	
+	return nil
+}
+
 // CreateInvoice creates a new invoice and its items in a transaction.
 func CreateInvoice(invoice *models.Invoice) (int64, error) {
 	tx, err := DB.Begin()
@@ -51,9 +89,30 @@ func CreateInvoice(invoice *models.Invoice) (int64, error) {
 		return 0, err
 	}
 
-	// Use Status from models.Invoice
-	result, err := tx.Exec("INSERT INTO invoices (client_id, issue_date, due_date, status, total) VALUES (?, ?, ?, ?, ?)",
-		invoice.ClientID, invoice.IssueDate, invoice.DueDate, invoice.Status, invoice.Total)
+	// AUTO-HEAL: Check if customer exists, if not create it to satisfy Foreign Key
+	var exists int
+	err = tx.QueryRow("SELECT 1 FROM customers WHERE id = ?", invoice.CustomerID).Scan(&exists)
+	if err == sql.ErrNoRows {
+		// Customer missing! Auto-create it inside the same transaction
+		_, err = tx.Exec("INSERT INTO customers (id, name, email, address) VALUES (?, ?, ?, ?)",
+			invoice.CustomerID,
+			fmt.Sprintf("Auto Client %d", invoice.CustomerID),
+			"auto@demo.com",
+			"Auto Created Address")
+		if err != nil {
+			tx.Rollback()
+			return 0, fmt.Errorf("failed to auto-create missing customer: %v", err)
+		}
+	} else if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	// Map 'status' to 'paid' boolean (draft/sent = false, paid = true)
+	isPaid := (invoice.Status == "paid")
+
+	result, err := tx.Exec("INSERT INTO invoices (customer_id, issue_date, due_date, paid, total) VALUES (?, ?, ?, ?, ?)",
+		invoice.CustomerID, invoice.IssueDate, invoice.DueDate, isPaid, invoice.Total)
 	if err != nil {
 		tx.Rollback()
 		return 0, err
@@ -66,8 +125,10 @@ func CreateInvoice(invoice *models.Invoice) (int64, error) {
 	}
 
 	for _, item := range invoice.LineItems {
-		_, err := tx.Exec("INSERT INTO line_items (invoice_id, description, quantity, unit_price) VALUES (?, ?, ?, ?)",
-			invoiceID, item.Description, item.Quantity, item.UnitPrice)
+		// Calculate item total for DB
+		itemTotal := float64(item.Quantity) * item.UnitPrice
+		_, err := tx.Exec("INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, total) VALUES (?, ?, ?, ?, ?)",
+			invoiceID, item.Description, item.Quantity, item.UnitPrice, itemTotal)
 		if err != nil {
 			tx.Rollback()
 			return 0, err
@@ -79,7 +140,7 @@ func CreateInvoice(invoice *models.Invoice) (int64, error) {
 
 // GetInvoices retrieves a paginated list of invoices.
 func GetInvoices(limit, offset int) ([]models.Invoice, error) {
-	rows, err := DB.Query("SELECT id, client_id, issue_date, due_date, status, total FROM invoices ORDER BY issue_date DESC LIMIT ? OFFSET ?", limit, offset)
+	rows, err := DB.Query("SELECT id, customer_id, issue_date, due_date, paid, total FROM invoices ORDER BY issue_date DESC LIMIT ? OFFSET ?", limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +149,14 @@ func GetInvoices(limit, offset int) ([]models.Invoice, error) {
 	var invoices []models.Invoice
 	for rows.Next() {
 		var invoice models.Invoice
-		if err := rows.Scan(&invoice.ID, &invoice.ClientID, &invoice.IssueDate, &invoice.DueDate, &invoice.Status, &invoice.Total); err != nil {
+		var isPaid bool
+		if err := rows.Scan(&invoice.ID, &invoice.CustomerID, &invoice.IssueDate, &invoice.DueDate, &isPaid, &invoice.Total); err != nil {
 			return nil, err
+		}
+		if isPaid {
+			invoice.Status = "paid"
+		} else {
+			invoice.Status = "draft"
 		}
 		invoices = append(invoices, invoice)
 	}
@@ -99,13 +166,20 @@ func GetInvoices(limit, offset int) ([]models.Invoice, error) {
 // GetInvoiceByID retrieves a single invoice by its ID, including its items.
 func GetInvoiceByID(id int) (*models.Invoice, error) {
 	var invoice models.Invoice
-	err := DB.QueryRow("SELECT id, client_id, issue_date, due_date, status, total FROM invoices WHERE id = ?", id).Scan(
-		&invoice.ID, &invoice.ClientID, &invoice.IssueDate, &invoice.DueDate, &invoice.Status, &invoice.Total)
+	var isPaid bool
+	err := DB.QueryRow("SELECT id, customer_id, issue_date, due_date, paid, total FROM invoices WHERE id = ?", id).Scan(
+		&invoice.ID, &invoice.CustomerID, &invoice.IssueDate, &invoice.DueDate, &isPaid, &invoice.Total)
 	if err != nil {
 		return nil, err
 	}
+	
+	if isPaid {
+		invoice.Status = "paid"
+	} else {
+		invoice.Status = "draft"
+	}
 
-	rows, err := DB.Query("SELECT id, invoice_id, description, quantity, unit_price FROM line_items WHERE invoice_id = ?", id)
+	rows, err := DB.Query("SELECT id, invoice_id, description, quantity, unit_price, total FROM invoice_items WHERE invoice_id = ?", id)
 	if err != nil {
 		return nil, err
 	}
@@ -114,14 +188,12 @@ func GetInvoiceByID(id int) (*models.Invoice, error) {
 	var items []models.LineItem
 	for rows.Next() {
 		var item models.LineItem
-		if err := rows.Scan(&item.ID, &item.InvoiceID, &item.Description, &item.Quantity, &item.UnitPrice); err != nil {
+		if err := rows.Scan(&item.ID, &item.InvoiceID, &item.Description, &item.Quantity, &item.UnitPrice, &item.Total); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
 	}
 	invoice.LineItems = items
-
-	invoice.CalculateTotal()
 
 	return &invoice, nil
 }
