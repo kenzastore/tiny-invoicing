@@ -8,3 +8,6 @@ This document outlines the core technologies utilized in the Tiny Invoicing appl
 
 ## Database
 - **MySQL**: A relational database management system used for persistent data storage, including invoices, client information, and other application data.
+
+## Testing Libraries
+- **go-sqlmock**: Used for mocking SQL database interactions in unit tests.
