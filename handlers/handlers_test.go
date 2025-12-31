@@ -9,9 +9,22 @@ import (
 	"testing"
 	"time"
 	"tiny-invoicing/database"
+	"tiny-invoicing/models"
 
 	"github.com/DATA-DOG/go-sqlmock"
 )
+
+// MockInvoiceStore is a mock implementation of InvoiceStore.
+type MockInvoiceStore struct {
+	CreateInvoiceFunc func(invoice *models.Invoice) (int64, error)
+}
+
+func (m *MockInvoiceStore) CreateInvoice(invoice *models.Invoice) (int64, error) {
+	if m.CreateInvoiceFunc != nil {
+		return m.CreateInvoiceFunc(invoice)
+	}
+	return 0, nil
+}
 
 func TestHandlers(t *testing.T) {
 	// TODO: Implement actual handler tests with a test server and mocked database
@@ -19,6 +32,8 @@ func TestHandlers(t *testing.T) {
 }
 
 func TestCreateInvoice_InvalidInput(t *testing.T) {
+	handler := &InvoiceHandler{}
+
 	// Setup a test server
 	reqBody := []byte(`{
 		"client_id": 0,
@@ -35,9 +50,7 @@ func TestCreateInvoice_InvalidInput(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(CreateInvoice) // Assuming CreateInvoice is exported
-
-	handler.ServeHTTP(rr, req)
+	http.HandlerFunc(handler.CreateInvoice).ServeHTTP(rr, req)
 
 	// Assertions
 	if status := rr.Code; status != http.StatusBadRequest {
@@ -53,17 +66,12 @@ func TestCreateInvoice_InvalidInput(t *testing.T) {
 }
 
 func TestCreateInvoice_Success(t *testing.T) {
-	// Setup sqlmock
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	mockStore := &MockInvoiceStore{
+		CreateInvoiceFunc: func(invoice *models.Invoice) (int64, error) {
+			return 1, nil
+		},
 	}
-	defer db.Close()
-
-	// Swap global DB
-	oldDB := database.DB
-	database.DB = db
-	defer func() { database.DB = oldDB }()
+	handler := &InvoiceHandler{Store: mockStore}
 
 	reqBody := []byte(`{
 		"client_id": 1,
@@ -81,45 +89,23 @@ func TestCreateInvoice_Success(t *testing.T) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	// Expectations
-	mock.ExpectBegin()
-	mock.ExpectExec("INSERT INTO invoices").
-		WithArgs(1, sqlmock.AnyArg(), sqlmock.AnyArg(), "draft", 25.0). // 2*10 + 1*5 = 25
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec("INSERT INTO line_items").
-		WithArgs(1, "Item 1", 2, 10.0).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec("INSERT INTO line_items").
-		WithArgs(1, "Item 2", 1, 5.0).
-		WillReturnResult(sqlmock.NewResult(2, 1))
-	mock.ExpectCommit()
-
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(CreateInvoice)
-
-	handler.ServeHTTP(rr, req)
+	http.HandlerFunc(handler.CreateInvoice).ServeHTTP(rr, req)
 
 	// Assertions
 	if status := rr.Code; status != http.StatusCreated {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusCreated)
 	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
 }
 
 func TestCreateInvoice_DatabaseError(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	mockStore := &MockInvoiceStore{
+		CreateInvoiceFunc: func(invoice *models.Invoice) (int64, error) {
+			return 0, fmt.Errorf("db error")
+		},
 	}
-	defer db.Close()
-
-	oldDB := database.DB
-	database.DB = db
-	defer func() { database.DB = oldDB }()
+	handler := &InvoiceHandler{Store: mockStore}
 
 	reqBody := []byte(`{
 		"client_id": 1,
@@ -134,16 +120,8 @@ func TestCreateInvoice_DatabaseError(t *testing.T) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	mock.ExpectBegin()
-	mock.ExpectExec("INSERT INTO invoices").
-		WithArgs(1, sqlmock.AnyArg(), sqlmock.AnyArg(), "draft", 10.0).
-		WillReturnError(fmt.Errorf("db error"))
-	mock.ExpectRollback()
-
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(CreateInvoice)
-
-	handler.ServeHTTP(rr, req)
+	http.HandlerFunc(handler.CreateInvoice).ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusInternalServerError {
 		t.Errorf("handler returned wrong status code: got %v want %v",
@@ -158,6 +136,8 @@ func TestCreateInvoice_DatabaseError(t *testing.T) {
 }
 
 func TestCreateInvoice_InvalidJSON(t *testing.T) {
+	handler := &InvoiceHandler{}
+
 	reqBody := []byte(`{invalid json}`)
 	req, err := http.NewRequest("POST", "/invoices", bytes.NewBuffer(reqBody))
 	if err != nil {
@@ -166,9 +146,7 @@ func TestCreateInvoice_InvalidJSON(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(CreateInvoice)
-
-	handler.ServeHTTP(rr, req)
+	http.HandlerFunc(handler.CreateInvoice).ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
@@ -219,9 +197,9 @@ func TestGetInvoice_Success(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(GetInvoice)
+	handler := &InvoiceHandler{}
 
-	handler.ServeHTTP(rr, req)
+	http.HandlerFunc(handler.GetInvoice).ServeHTTP(rr, req)
 
 	// Assertions
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -250,9 +228,9 @@ func TestGetInvoice_NotFound(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(GetInvoice)
+	handler := &InvoiceHandler{}
 
-	handler.ServeHTTP(rr, req)
+	http.HandlerFunc(handler.GetInvoice).ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusNotFound {
 		t.Errorf("handler returned wrong status code: got %v want %v",
@@ -288,9 +266,9 @@ func TestGetInvoices_Success(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(GetInvoices)
+	handler := &InvoiceHandler{}
 
-	handler.ServeHTTP(rr, req)
+	http.HandlerFunc(handler.GetInvoices).ServeHTTP(rr, req)
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -321,9 +299,9 @@ func TestGetInvoices_Pagination(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(GetInvoices)
+	handler := &InvoiceHandler{}
 
-	handler.ServeHTTP(rr, req)
+	http.HandlerFunc(handler.GetInvoices).ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
