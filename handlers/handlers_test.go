@@ -259,3 +259,78 @@ func TestGetInvoice_NotFound(t *testing.T) {
 			status, http.StatusNotFound)
 	}
 }
+
+func TestGetInvoices_Success(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	oldDB := database.DB
+	database.DB = db
+	defer func() { database.DB = oldDB }()
+
+	issueDate := time.Now().Truncate(time.Second)
+	dueDate := issueDate.Add(14 * 24 * time.Hour)
+
+	rows := sqlmock.NewRows([]string{"id", "client_id", "issue_date", "due_date", "status", "total"}).
+		AddRow(1, 1, issueDate, dueDate, "draft", 25.0).
+		AddRow(2, 2, issueDate, dueDate, "paid", 100.0)
+
+	mock.ExpectQuery("SELECT id, client_id, issue_date, due_date, status, total FROM invoices ORDER BY issue_date DESC LIMIT \\? OFFSET \\?").
+		WithArgs(20, 0).
+		WillReturnRows(rows)
+
+	req, err := http.NewRequest("GET", "/api/invoices", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(GetInvoices)
+
+	handler.ServeHTTP(rr, req)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestGetInvoices_Pagination(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	oldDB := database.DB
+	database.DB = db
+	defer func() { database.DB = oldDB }()
+
+	rows := sqlmock.NewRows([]string{"id", "client_id", "issue_date", "due_date", "status", "total"}).
+		AddRow(1, 1, time.Now(), time.Now(), "draft", 25.0)
+
+	mock.ExpectQuery("SELECT id, client_id, issue_date, due_date, status, total FROM invoices ORDER BY issue_date DESC LIMIT \\? OFFSET \\?").
+		WithArgs(10, 5).
+		WillReturnRows(rows)
+
+	req, err := http.NewRequest("GET", "/api/invoices?limit=10&offset=5", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(GetInvoices)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
