@@ -39,7 +39,7 @@ Implement the logic and API endpoints for viewing a single invoice and listing a
 
 ### Tasks
 - [x] Task: Implement full logic for `GetInvoice` handler (retrieve from DB with line items). [c4f5dbe]
-- [~] Task: Implement full logic for `ListInvoices` handler (pagination and sorting).
+- [x] Task: Implement full logic for `ListInvoices` handler (pagination and sorting). [9954cea]
 - [x] Task: Write tests for `GetInvoice` handler. [c4f5dbe]
-- [ ] Task: Write tests for `ListInvoices` handler.
+- [x] Task: Write tests for `ListInvoices` handler. [9954cea]
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: View and List Invoices' (Protocol in workflow.md)
