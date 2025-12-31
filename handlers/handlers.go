@@ -12,6 +12,16 @@ import (
 	"tiny-invoicing/response"
 )
 
+// InvoiceStore defines the interface for invoice persistence.
+type InvoiceStore interface {
+	CreateInvoice(invoice *models.Invoice) (int64, error)
+}
+
+// InvoiceHandler handles invoice-related requests.
+type InvoiceHandler struct {
+	Store InvoiceStore
+}
+
 // CreateInvoice creates a new invoice.
 func CreateInvoice(w http.ResponseWriter, r *http.Request) {
 	var invoice models.Invoice
