@@ -9,5 +9,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: Fix handlers tests: remove invalid function mocking; use Interface DI
+## [x] Track: Fix handlers tests: remove invalid function mocking; use Interface DI
 *Link: [./conductor/tracks/fix_handlers_tests_20251231/](./conductor/tracks/fix_handlers_tests_20251231/)*
