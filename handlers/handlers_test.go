@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 	"tiny-invoicing/database"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -177,5 +179,83 @@ func TestCreateInvoice_InvalidJSON(t *testing.T) {
 	if rr.Body.String() != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			rr.Body.String(), expected)
+	}
+}
+
+func TestGetInvoice_Success(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	oldDB := database.DB
+	database.DB = db
+	defer func() { database.DB = oldDB }()
+
+	issueDate := time.Now().Truncate(time.Second)
+	dueDate := issueDate.Add(14 * 24 * time.Hour)
+
+	// Expectations for Invoice
+	invoiceRows := sqlmock.NewRows([]string{"id", "client_id", "issue_date", "due_date", "status", "total"}).
+		AddRow(1, 1, issueDate, dueDate, "draft", 25.0)
+
+	mock.ExpectQuery("SELECT id, client_id, issue_date, due_date, status, total FROM invoices WHERE id = ?").
+		WithArgs(1).
+		WillReturnRows(invoiceRows)
+
+	// Expectations for Line Items
+	itemRows := sqlmock.NewRows([]string{"id", "invoice_id", "description", "quantity", "unit_price"}).
+		AddRow(1, 1, "Item 1", 2, 10.0).
+		AddRow(2, 1, "Item 2", 1, 5.0)
+
+	mock.ExpectQuery("SELECT id, invoice_id, description, quantity, unit_price FROM line_items WHERE invoice_id = ?").
+		WithArgs(1).
+		WillReturnRows(itemRows)
+
+	req, err := http.NewRequest("GET", "/api/invoices/1", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(GetInvoice)
+
+	handler.ServeHTTP(rr, req)
+
+	// Assertions
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestGetInvoice_NotFound(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	oldDB := database.DB
+	database.DB = db
+	defer func() { database.DB = oldDB }()
+
+	mock.ExpectQuery("SELECT id, client_id, issue_date, due_date, status, total FROM invoices WHERE id = ?").
+		WithArgs(999).
+		WillReturnError(sql.ErrNoRows)
+
+	req, err := http.NewRequest("GET", "/api/invoices/999", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(GetInvoice)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusNotFound)
 	}
 }

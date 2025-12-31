@@ -38,7 +38,7 @@ Implement the logic and API endpoint for creating new invoices, including input 
 Implement the logic and API endpoints for viewing a single invoice and listing all invoices, including basic sorting and pagination.
 
 ### Tasks
-- [ ] Task: Implement full logic for `GetInvoice` handler (retrieve from DB with line items).
+- [~] Task: Implement full logic for `GetInvoice` handler (retrieve from DB with line items).
 - [ ] Task: Implement full logic for `ListInvoices` handler (pagination and sorting).
 - [ ] Task: Write tests for `GetInvoice` handler.
 - [ ] Task: Write tests for `ListInvoices` handler.
