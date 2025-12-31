@@ -1,0 +1,8 @@
+.env
+*.pem
+*.key
+vendor/
+node_modules/
+bin/
+dist/
+*.log
