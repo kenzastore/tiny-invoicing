@@ -17,9 +17,9 @@ Establish the contract for dependency injection and provide a concrete implement
 Update the `CreateInvoice` handler to use the `InvoiceStore` interface instead of direct global database access.
 
 ### Tasks
-- [ ] Task: Refactor `handlers.CreateInvoice` to be a method of a new `InvoiceHandler` struct.
-- [ ] Task: Update `main.go` to instantiate the `database.Store` and inject it into the `InvoiceHandler`.
-- [ ] Task: Verify wiring and compilation with `go build ./...`.
+- [x] Task: Refactor `handlers.CreateInvoice` to be a method of a new `InvoiceHandler` struct. [333a590]
+- [x] Task: Update `main.go` to instantiate the `database.Store` and inject it into the `InvoiceHandler`. [1e15ec9]
+- [x] Task: Verify wiring and compilation with `go build ./...`. [1e15ec9]
 - [ ] Task: (Optional) Perform a quick manual smoke test if the environment is ready.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Handler Refactoring for Dependency Injection' (Protocol in workflow.md)
 
