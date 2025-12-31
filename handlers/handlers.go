@@ -23,7 +23,7 @@ type InvoiceHandler struct {
 }
 
 // CreateInvoice creates a new invoice.
-func CreateInvoice(w http.ResponseWriter, r *http.Request) {
+func (h *InvoiceHandler) CreateInvoice(w http.ResponseWriter, r *http.Request) {
 	var invoice models.Invoice
 	if err := json.NewDecoder(r.Body).Decode(&invoice); err != nil {
 		response.Error(w, http.StatusBadRequest, "Invalid request payload")
@@ -38,7 +38,7 @@ func CreateInvoice(w http.ResponseWriter, r *http.Request) {
 
 	invoice.CalculateTotal()
 
-	invoiceID, err := database.CreateInvoice(&invoice)
+	invoiceID, err := h.Store.CreateInvoice(&invoice)
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "Failed to create invoice")
 		return
@@ -49,7 +49,7 @@ func CreateInvoice(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetInvoices lists all invoices.
-func GetInvoices(w http.ResponseWriter, r *http.Request) {
+func (h *InvoiceHandler) GetInvoices(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit <= 0 {
 		limit = 20
@@ -70,7 +70,7 @@ func GetInvoices(w http.ResponseWriter, r *http.Request) {
 
 
 // GetInvoice retrieves a single invoice.
-func GetInvoice(w http.ResponseWriter, r *http.Request) {
+func (h *InvoiceHandler) GetInvoice(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Path[len("/api/invoices/"):])
 	if err != nil {
 		response.Error(w, http.StatusBadRequest, "Invalid invoice ID")
@@ -91,7 +91,7 @@ func GetInvoice(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateInvoice updates an invoice.
-func UpdateInvoice(w http.ResponseWriter, r *http.Request) {
+func (h *InvoiceHandler) UpdateInvoice(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Path[len("/api/invoices/"):])
 	if err != nil {
 		response.Error(w, http.StatusBadRequest, "Invalid invoice ID")
